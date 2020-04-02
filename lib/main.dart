@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:rflutter_alert/rflutter_alert.dart';
+import 'brain.dart';
+import 'model/question.dart';
 
 void main() => runApp(Quizzler());
 
@@ -8,6 +11,11 @@ class Quizzler extends StatelessWidget {
     return MaterialApp(
       home: Scaffold(
         backgroundColor: Colors.grey.shade900,
+        appBar: AppBar(
+          title: Text('Quizzler'),
+          backgroundColor: Colors.grey.shade800,
+        ),
+        drawer: buildDrawer(),
         body: SafeArea(
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 10.0),
@@ -17,6 +25,36 @@ class Quizzler extends StatelessWidget {
       ),
     );
   }
+
+  Drawer buildDrawer() {
+    return Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade800,
+              ),
+              child: Text(
+                'Menu',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.create),
+              title: Text('Create Questions'),
+            ),
+            ListTile(
+              leading: Icon(Icons.score),
+              title: Text('Show Rank'),
+            ),
+          ],
+        ),
+      );
+  }
 }
 
 class QuizPage extends StatefulWidget {
@@ -25,6 +63,78 @@ class QuizPage extends StatefulWidget {
 }
 
 class _QuizPageState extends State<QuizPage> {
+  static Brain brain = new Brain();
+
+  List<Widget> scoreKeeper = [];
+
+  void updateScore(bool answer) {
+    if (brain.isCorrect(answer)) {
+      scoreKeeper.add(Icon(Icons.check, color: Colors.green));
+    } else {
+      scoreKeeper.add(Icon(Icons.close, color: Colors.red));
+    }
+
+    if (!brain.hasMoreQuestions()) {
+      var score = brain.score();
+      alert(score).show();
+    }
+  }
+
+  void clear() {
+    Navigator.pop(context);
+    setState(() {
+      brain.clear();
+      scoreKeeper = [];
+    });
+  }
+
+  Alert alert(int score) {
+    return Alert(
+      context: context,
+      type: AlertType.success,
+      title: "QUIZZLER",
+      desc: "The End. Your score was: $score",
+      buttons: [
+        DialogButton(
+          child: Text(
+            "Retry",
+            style: TextStyle(color: Colors.white, fontSize: 20),
+          ),
+          onPressed: () => this.clear(),
+          gradient: LinearGradient(colors: [
+            Color.fromRGBO(116, 116, 191, 1.0),
+            Color.fromRGBO(52, 138, 199, 1.0)
+          ]),
+        )
+      ],
+    );
+  }
+
+  Widget nextQuestion() {
+    if (!brain.hasMoreQuestions()) {
+      var score = brain.score();
+      return Text(
+        'The End. Your score was: $score',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 25.0,
+          color: Colors.white,
+        ),
+      );
+    }
+
+    Question question = brain.nextQuestion();
+
+    return Text(
+      question.label,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 25.0,
+        color: Colors.white,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -36,14 +146,7 @@ class _QuizPageState extends State<QuizPage> {
           child: Padding(
             padding: EdgeInsets.all(10.0),
             child: Center(
-              child: Text(
-                'This is where the question text will go.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 25.0,
-                  color: Colors.white,
-                ),
-              ),
+              child: this.nextQuestion(),
             ),
           ),
         ),
@@ -62,6 +165,9 @@ class _QuizPageState extends State<QuizPage> {
               ),
               onPressed: () {
                 //The user picked true.
+                setState(() {
+                  this.updateScore(true);
+                });
               },
             ),
           ),
@@ -80,18 +186,17 @@ class _QuizPageState extends State<QuizPage> {
               ),
               onPressed: () {
                 //The user picked false.
+                setState(() {
+                  this.updateScore(false);
+                });
               },
             ),
           ),
         ),
-        //TODO: Add a Row here as your score keeper
+        Row(
+          children: scoreKeeper,
+        )
       ],
     );
   }
 }
-
-/*
-question1: 'You can lead a cow down stairs but not up stairs.', false,
-question2: 'Approximately one quarter of human bones are in the feet.', true,
-question3: 'A slug\'s blood is green.', true,
-*/
